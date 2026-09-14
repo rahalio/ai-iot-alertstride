@@ -1,0 +1,606 @@
+openapi: 3.0.3
+info:
+  title: AlertStride
+  version: 0.1.0
+  description: >-
+    Streaming fall-detection for retirement homes and rehab clinics. Scores wearable
+    accelerometer streams in real time and drives care-staff alert acknowledgment
+    and escalation workflows.
+  x-product-slug: ai-iot-alertstride
+  x-source: ai-in-iot/1811.06672/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Residents
+  - name: Devices
+  - name: Streams
+  - name: Inferences
+  - name: Alerts
+  - name: Models
+paths:
+  /v1/residents:
+    get:
+      operationId: listResidents
+      tags: [Residents]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: facilityId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Residents
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeResident" }
+    post:
+      operationId: enrollResident
+      tags: [Residents]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResidentCreate" }
+      responses:
+        "201":
+          description: Enrolled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeResident" }
+  /v1/residents/{residentId}/consent:
+    post:
+      operationId: recordConsent
+      tags: [Residents]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: residentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConsentRecordCreate" }
+      responses:
+        "200":
+          description: Consent recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeConsentRecord" }
+  /v1/devices:
+    get:
+      operationId: listWearables
+      tags: [Devices]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: residentId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Devices
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeWearableDevice" }
+    post:
+      operationId: registerWearable
+      tags: [Devices]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WearableDeviceCreate" }
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeWearableDevice" }
+  /v1/streams/frames:
+    post:
+      operationId: ingestMotionFrames
+      tags: [Streams]
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MotionFrameBatch" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeStreamReceipt" }
+  /v1/inferences:
+    get:
+      operationId: listFallInferences
+      tags: [Inferences]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: residentId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Inferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeFallInference" }
+  /v1/alerts:
+    get:
+      operationId: listCareAlerts
+      tags: [Alerts]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, acknowledged, escalated, closed] }
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeCareAlert" }
+  /v1/alerts/{alertId}/acknowledge:
+    post:
+      operationId: acknowledgeAlert
+      tags: [Alerts]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [staffId]
+              properties:
+                staffId: { type: string }
+                note: { type: string }
+      responses:
+        "200":
+          description: Acknowledged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeCareAlert" }
+  /v1/alerts/{alertId}/escalate:
+    post:
+      operationId: escalateAlert
+      tags: [Alerts]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [staffId, reason]
+              properties:
+                staffId: { type: string }
+                reason: { type: string }
+      responses:
+        "200":
+          description: Escalated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeCareAlert" }
+  /v1/models:
+    get:
+      operationId: listFallModels
+      tags: [Models]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Models
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeModelVersion" }
+  /v1/models/{modelId}/approve:
+    post:
+      operationId: approveFallModel
+      tags: [Models]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approverId]
+              properties:
+                approverId: { type: string }
+                notes: { type: string }
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeModelVersion" }
+  /v1/exports/incidents:
+    post:
+      operationId: exportIncidentPack
+      tags: [Alerts]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alertId]
+              properties:
+                alertId: { type: string }
+      responses:
+        "202":
+          description: Export queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeIncidentExport" }
+components:
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  responses:
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    Resident:
+      type: object
+      required: [id, facilityId, wing]
+      properties:
+        id: { type: string }
+        facilityId: { type: string }
+        displayName: { type: string }
+        wing: { type: string }
+        monitoringPaused: { type: boolean }
+    ResidentCreate:
+      type: object
+      required: [facilityId, wing]
+      properties:
+        facilityId: { type: string }
+        displayName: { type: string }
+        wing: { type: string }
+    ConsentRecord:
+      type: object
+      required: [id, residentId, status]
+      properties:
+        id: { type: string }
+        residentId: { type: string }
+        status: { type: string, enum: [granted, withdrawn] }
+        purpose: { type: string }
+        recordedAt: { type: string, format: date-time }
+    ConsentRecordCreate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [granted, withdrawn] }
+        purpose: { type: string, default: fall_safety }
+    WearableDevice:
+      type: object
+      required: [id, residentId, status]
+      properties:
+        id: { type: string }
+        residentId: { type: string }
+        hardwareId: { type: string }
+        status: { type: string, enum: [worn, not_worn, offline, low_battery] }
+        batteryPct: { type: number }
+    WearableDeviceCreate:
+      type: object
+      required: [residentId, hardwareId]
+      properties:
+        residentId: { type: string }
+        hardwareId: { type: string }
+    MotionFrameBatch:
+      type: object
+      required: [deviceId, frames]
+      properties:
+        deviceId: { type: string }
+        frames:
+          type: array
+          items:
+            type: object
+            required: [capturedAt, ax, ay, az]
+            properties:
+              capturedAt: { type: string, format: date-time }
+              ax: { type: number }
+              ay: { type: number }
+              az: { type: number }
+              gx: { type: number }
+              gy: { type: number }
+              gz: { type: number }
+    StreamReceipt:
+      type: object
+      required: [accepted]
+      properties:
+        accepted: { type: integer }
+        inferenceIds:
+          type: array
+          items: { type: string }
+    FallInference:
+      type: object
+      required: [id, residentId, deviceId, fallSuspected, scoredAt]
+      properties:
+        id: { type: string }
+        residentId: { type: string }
+        deviceId: { type: string }
+        fallSuspected: { type: boolean }
+        confidence: { type: number }
+        fallScenario: { type: string }
+        modelId: { type: string }
+        scoredAt: { type: string, format: date-time }
+    CareAlert:
+      type: object
+      required: [id, residentId, status, createdAt]
+      properties:
+        id: { type: string }
+        residentId: { type: string }
+        deviceId: { type: string }
+        inferenceId: { type: string }
+        status: { type: string, enum: [open, acknowledged, escalated, closed] }
+        confidence: { type: number }
+        createdAt: { type: string, format: date-time }
+        acknowledgedBy: { type: string }
+    ModelVersion:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [candidate, approved, production, rolled_back] }
+        accuracy: { type: number }
+        falseAlarmRate: { type: number }
+        approvedBy: { type: string }
+    IncidentExport:
+      type: object
+      required: [id, alertId, status]
+      properties:
+        id: { type: string }
+        alertId: { type: string }
+        status: { type: string, enum: [queued, ready, failed] }
+        downloadUrl: { type: string, format: uri }
+
+    DataEnvelopeResident:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/Resident" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeResident:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Resident" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeConsentRecord:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ConsentRecord" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeConsentRecord:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ConsentRecord" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeWearableDevice:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/WearableDevice" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeWearableDevice:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/WearableDevice" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeStreamReceipt:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/StreamReceipt" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeStreamReceipt:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/StreamReceipt" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeFallInference:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/FallInference" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeFallInference:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/FallInference" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeCareAlert:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/CareAlert" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeCareAlert:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/CareAlert" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeModelVersion:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ModelVersion" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeModelVersion:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ModelVersion" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeIncidentExport:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/IncidentExport" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeIncidentExport:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/IncidentExport" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
